@@ -21,7 +21,7 @@ const ingredientReducer = (currentIngredient, action) => {
 
 const Ingredients = () => {
   const [userIngredients,dispatch] = useReducer(ingredientReducer,[]);
-  const {isLoading, error, data, sendRequest} = useHttp();
+  const {isLoading, error, data, sendRequest, reqExtra,reqIdentifier, clear} = useHttp();
   // USed at root level
   // const [ userIngredients , setUserIngredients ] = useState([]);
   // const [isLoading, setIsLoading] = useState(false);
@@ -31,14 +31,19 @@ const Ingredients = () => {
   //Acts like componentDidupdate
   // With empty array acts Like componentDidMount and run only once
   useEffect(() => {
-    console.log('rendering', userIngredients);
-  },[userIngredients]);
+    if(reqIdentifier === 'REMOVE_INGREDIENT' && !error && !isLoading){
+      dispatch({type:'DELETE',id: reqExtra});
+    } else if(reqIdentifier === 'ADD_INGREDIENT' && !error && !isLoading) {
+      dispatch({type:'ADD',ingredient:{id: data.name , ...reqExtra}});
+    }
+  },[data,reqExtra,reqIdentifier,isLoading,error]);
 
   //Usecall back stops re-render
   const filteredIngredientsHandler = useCallback(fileteredIngredients => {
     dispatch({type:'SET',ingredients:fileteredIngredients});
   },[])
   const addIngredientsHandler = useCallback(ingredient => {
+    sendRequest(`https://react-hook-8e8ad.firebaseio.com/ingredients.json`,'POST',JSON.stringify(ingredient),ingredient,'ADD_INGREDIENT');
     // dispatchHttp({type:'SEND'});
     // fetch('https://react-hook-8e8ad.firebaseio.com/ingredients.json', {
     //   method  : 'POST',
@@ -55,20 +60,16 @@ const Ingredients = () => {
   }, []);
   const removeIngredientHandler = useCallback(ingredientId => {
     // dispatchHttp({type:'RESPONSE'});
-    sendRequest(`https://react-hook-8e8ad.firebaseio.com/ingredients/${ingredientId}.json`, 'DELETE');
+    sendRequest(`https://react-hook-8e8ad.firebaseio.com/ingredients/${ingredientId}.json`, 'DELETE',null,ingredientId,'REMOVE_INGREDIENT');
   },[]);
-  const clearError = useCallback(() => {
-    //Executed in Sync, batched together
-    dispatchHttp({type:'CLEAR'});
-
-  },[]);
+  
   const ingredientList = useMemo(() => {
     return (<IngredientList ingredients={userIngredients} onRemoveItem={removeIngredientHandler} />)},
     [userIngredients,removeIngredientHandler]
   );
   return (
     <div className="App">
-      {error && <ErrorModal onClose={httpState}>{error}</ErrorModal>}
+      {error && <ErrorModal onClose={clear}>{error}</ErrorModal>}
       <IngredientForm onAddIngredient={addIngredientsHandler} loading={isLoading}/>
 
       <section>

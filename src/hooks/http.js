@@ -1,25 +1,28 @@
 import {useReducer, useCallback} from 'react';
 
+const initialState  = {loading:false,error:null,data:null,extra:null,identifier:null};
 const httpReducer = (httpState, action) => {
     switch(action.type){
         case 'SEND':
-        return {error:null,loading:true,data:null};
+            return {error:null,loading:true,data:null,extra:null,identifier : action.identifier};
         case 'RESPONSE':
-        return {...httpState,loading:false,data:action.responseData};
+            return {...httpState,loading:false,data:action.responseData,extra:action.extra};
         case 'ERROR':
-        return {error:action.errorMessage,loading:false};
+            return {error:action.errorMessage,loading:false};
         case 'CLEAR':
-        return {...httpState,error:null};
+            return initialState;
         default:
-        throw new Error('Something wrong!');
+            throw new Error('Something wrong!');
     }
 };
 
 const useHttp = () => {
-    const [httpState,dispatchHttp] = useReducer(httpReducer,{loading:false,error:null,data:null});
-    const sendRequest = useCallback((url,method,body) => {
-        dispatchHttp({type:'SEND'});
+    const [httpState,dispatchHttp] = useReducer(httpReducer,initialState);
+    
+    const clear = useCallback(() => dispatchHttp({type:'CLEAR'}), []);
 
+    const sendRequest = useCallback((url,method,body,reqExtra,reqIdentifier) => {
+        dispatchHttp({type:'SEND',identifier:reqIdentifier});
         fetch(url, {
             method  : method,
             body:body,
@@ -31,7 +34,7 @@ const useHttp = () => {
                 return response.json();
             })
             .then(responseData => {
-                dispatchHttp({type:'RESPONSE',responseData:responseData});
+                dispatchHttp({type:'RESPONSE',responseData:responseData,extra:reqExtra});
             })
             .catch(error => {
             //Executed in Sync, batched together
@@ -43,7 +46,10 @@ const useHttp = () => {
         isLoading : httpState.loading,
         data : httpState.data,
         error : httpState.error,
-        sendRequest : sendRequest
+        sendRequest : sendRequest,
+        reqExtra: httpState.extra,
+        reqIdentifier: httpState.identifier,
+        clear : clear
     };
 };
 
